@@ -1,87 +1,76 @@
 #include "state.h"
 #include "config.h"
-#include "kbd.h"
-#include "sensor.h"
-#include "storage.h"
-#include "terminal.h"
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
-static state_t state;
+void State::updateSettings(int newInterval, const JsonArray &newDevices) {
+  this->scanInterval = newInterval;
 
-void state_init(storage_t *storage) {
-  for (int i = 0; i < SENSORS; ++i) {
-    state.sensors[i].adc_value = 0;
-    state.sensors[i].adc_gpio = ADC_GPIOS[i];
-    state.sensors[i].pump_gpio = PUMP_GPIOS[i];
-    state.sensors[i].threshold = storage->threshold[i];
-    state.sensors[i].pumping = false;
-  }
+  Device devTmp[MAX_DEVICES];
+  int devCounter = 0;
 
-  state.selected = 0;
-}
+  for (JsonObject devJson : newDevices) {
+    if (devCounter >= MAX_DEVICES)
+      break;
 
-const moisture_sensor_t *state_get_sensors() { return state.sensors; }
+    Device *newDev = &devTmp[devCounter];
 
-void state_set_sensor_adc_value(int sensor, uint16_t value) {
-  state.sensors[sensor].adc_value = value;
-}
+    newDev->id = devJson["id"];
+    newDev->sensorPin = devJson["sensor_pin"];
+    newDev->pumpPin = devJson["pump_pin"];
+    newDev->threshold = devJson["threshold"];
 
-int state_get_selected() { return state.selected; }
+    newDev->pumping = false;
+    newDev->sensorValue = 0;
 
-void state_set_selected(int sensor) { state.selected = sensor; }
+    bool foundOld = false;
 
-void state_handle_short_input(int key) {
-  int pin = KBD_PIN_MAP[key];
-  MSerial.printf("short press key=%d pin=%d\r\n", key, pin);
+    for (int i = 0; i < this->deviceCount; ++i) {
+      if (this->devices[i].id == newDev->id) {
+        newDev->pumping = this->devices[i].pumping;
+        newDev->sensorValue = this->devices[i].sensorValue;
 
-  if (!state.display_active) {
-    terminal_toogle_display_power();
-    return;
-  }
+        // set old pin to low if changed
+        if (this->devices[i].pumpPin != newDev->pumpPin) {
+          pinMode(this->devices[i].pumpPin, OUTPUT);
+          digitalWrite(this->devices[i].pumpPin, LOW);
+        }
 
-  if (pin == KBD_PIN_MAP[KEY_DOWN]) {
-    if (state.selected < OPT_MAX - 1)
-      state.selected++;
-  } else if (pin == KBD_PIN_MAP[KEY_UP]) {
-    if (state.selected > 0) {
-      state.selected--;
-    }
-  } else if (pin == KBD_PIN_MAP[KEY_LEFT] || pin == KBD_PIN_MAP[KEY_RIGHT]) {
-    if (state.selected == OPT_POWEROFF) {
-      terminal_toogle_display_power();
-      return;
+        foundOld = true;
+        break;
+      }
     }
 
-    moisture_sensor_t *sensor = &state.sensors[state.selected];
-    int step = pin == KBD_PIN_MAP[KEY_LEFT] ? (-THRESHOLD_SHORT_STEP)
-                                            : (THRESHOLD_SHORT_STEP);
+    pinMode(newDev->pumpPin, OUTPUT);
+    digitalWrite(newDev->pumpPin, newDev->pumping ? HIGH : LOW);
 
-    int new_threshold = sensor->threshold + step;
-    if (new_threshold < 0)
-      new_threshold = 0;
-    if (new_threshold > MAX_SENSOR_VALUE)
-      new_threshold = MAX_SENSOR_VALUE;
-
-    sensor->threshold = new_threshold;
-    storage.threshold[state.selected] = new_threshold;
-    storage_save();
+    ++devCounter;
   }
-}
 
-void state_handle_long_repeat(int key) {
-  int pin = KBD_PIN_MAP[key];
-  MSerial.printf("long press repeat key=%d pin=%d\r\n", key, pin);
+  for (int i = 0; i < this->deviceCount; ++i) {
+    bool stillExists = false;
+    for (int j = 0; j < devCounter; ++j) {
+      if (devTmp[j].id == this->devices[i].id) {
+        stillExists = true;
+        break;
+      }
+    }
 
-  if (!state.display_active) {
-    terminal_toogle_display_power();
-    return;
+    if (!stillExists) {
+      pinMode(this->devices[i].pumpPin, OUTPUT);
+      digitalWrite(this->devices[i].pumpPin, LOW);
+    }
   }
+
+  memcpy(this->devices, devTmp, sizeof(Device) * devCounter);
+  this->deviceCount = devCounter;
+  inited = true;
 }
 
-void state_set_pumping_state(int sensor, bool pumping) {
-  state.sensors[sensor].pumping = pumping;
-}
+int State::getDeviceCount() { return deviceCount; }
 
-void state_set_display_active(bool active) { state.display_active = active; }
+Device *State::getDevices() { return devices; }
 
-bool state_get_display_active() { return state.display_active; }
+int State::getScanInterval() { return scanInterval; }
+
+bool State::isInited() { return inited; }

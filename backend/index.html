@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roślinki IoT Panel</title>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-main: #1f2937;
+      --text-muted: #6b7280;
+      --border-radius: 12px;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+      --unsaved-border: #000000;
+      --unsaved-bg: #DAB1DA;
+      --moisture-bg: #ecfccb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, system-ui, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--bg-color);
+      padding-bottom: 10px;
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: middle;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    input.unsaved {
+      border-color: var(--unsaved-border) !important;
+      background-color: var(--unsaved-bg) !important;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 0.9rem;
+    }
+
+    .btn-add {
+      background: var(--bg-color);
+      color: var(--primary-color);
+      margin-top: 15px;
+      width: 100%;
+      border: 1px dashed #cbd5e1;
+    }
+
+    .btn-add:hover {
+      background: #e0e7ff;
+      border-color: var(--primary-color);
+    }
+
+    .btn-remove {
+      background: transparent;
+      color: #ef4444;
+      padding: 6px;
+      font-size: 1.2rem;
+      opacity: 0.5;
+    }
+
+    .btn-remove:hover {
+      opacity: 1;
+      background: #fee2e2;
+    }
+
+    .save-bar {
+      position: sticky;
+      bottom: 20px;
+      z-index: 100;
+    }
+
+    .btn-save {
+      background: #059669;
+      color: white;
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.4);
+    }
+
+    .btn-save:hover {
+      background: #047857;
+    }
+
+    .value-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+
+    .value-na {
+      color: #9ca3af;
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .new-row {
+      animation: slideDown 0.3s ease-out;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Roślinki Panel</h1>
+      <p>Manage your sensors and pumps configuration</p>
+    </header>
+
+    <section class="card">
+      <h2>Device Configuration</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25%">Name</th>
+              <th style="width: 15%">Current Moisture</th>
+              <th style="width: 15%">Sensor Pin</th>
+              <th style="width: 15%">Pump Pin</th>
+              <th style="width: 15%">Threshold</th>
+              <th style="width: 15%">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="deviceTableBody">
+            {{ range .Devices }}
+            <tr class="device-row">
+              <input type="hidden" class="dev-id" value="{{ .ID }}">
+
+              <td><input type="text" class="dev-name" value="{{ .Name }}" data-original="{{ .Name }}"></td>
+
+              <td>
+                {{ if .LastValue }}
+                <span class="value-badge">{{ .LastValue }}</span>
+                {{ else }}
+                <span class="value-na">No Data</span>
+                {{ end }}
+              </td>
+
+              <td><input type="number" class="dev-sensor" value="{{ .SensorPin }}" data-original="{{ .SensorPin }}">
+              </td>
+              <td><input type="number" class="dev-pump" value="{{ .PumpPin }}" data-original="{{ .PumpPin }}"></td>
+              <td><input type="number" class="dev-thresh" value="{{ .Threshold }}" data-original="{{ .Threshold }}">
+              </td>
+              <td style="text-align: center;"><button class="btn btn-remove" onclick="removeRow(this)">X</button></td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+      </div>
+      <button class="btn btn-add" id="addRowBtn">+ Add New Device</button>
+    </section>
+
+    <section class="card footer-settings">
+      <h2>Global Settings</h2>
+      <div class="form-group">
+        <label for="globalInterval" style="display:block; margin-bottom: 8px; font-weight: 600;">Reading Interval
+          (ms)</label>
+        <input type="number" id="globalInterval" value="{{ .Config.ScanInterval }}"
+          data-original="{{ .Config.ScanInterval }}">
+        <small style="color: var(--text-muted); margin-top: 5px; display:block;">Time in milliseconds between sensor
+          readings.</small>
+      </div>
+    </section>
+
+    <div class="save-bar">
+      <button class="btn btn-save" onclick="saveChanges()">Save Changes</button>
+    </div>
+  </div>
+
+  <script>
+    function checkChange(input) {
+      const original = input.getAttribute('data-original');
+      if (input.value !== original) {
+        input.classList.add('unsaved');
+      } else {
+        input.classList.remove('unsaved');
+      }
+    }
+
+    function attachListeners() {
+      document.querySelectorAll('input').forEach(input => {
+        input.oninput = function () {checkChange(this);};
+      });
+    }
+    attachListeners();
+
+    const tableBody = document.getElementById('deviceTableBody');
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      const newRow = document.createElement('tr');
+      newRow.classList.add('new-row', 'device-row');
+
+      newRow.innerHTML = `
+        <input type="hidden" class="dev-id" value="0">
+        <td><input type="text" class="dev-name unsaved" value="New Plant" data-original=""></td>
+        <td><span class="value-na">N/A</span></td>
+        <td><input type="number" class="dev-sensor unsaved" value="0" data-original=""></td>
+        <td><input type="number" class="dev-pump unsaved" value="0" data-original=""></td>
+        <td><input type="number" class="dev-thresh unsaved" value="500" data-original=""></td>
+        <td style="text-align: center;"><button class="btn btn-remove" onclick="removeRow(this)">×</button></td>
+      `;
+      tableBody.appendChild(newRow);
+      attachListeners();
+    });
+
+    window.removeRow = function (btn) {
+      if (confirm("Are you sure that you want to remove this device?")) {
+        btn.closest('tr').remove();
+      }
+    }
+
+    window.saveChanges = async function () {
+      const saveBtn = document.querySelector('.btn-save');
+      saveBtn.innerText = "Saving...";
+      saveBtn.disabled = true;
+
+      const configData = {
+        scan_interval: parseInt(document.getElementById('globalInterval').value)
+      };
+
+      const devicesData = [];
+      const rows = document.querySelectorAll('.device-row');
+
+      rows.forEach(row => {
+        devicesData.push({
+          id: parseInt(row.querySelector('.dev-id').value),
+          name: row.querySelector('.dev-name').value,
+          sensor_pin: parseInt(row.querySelector('.dev-sensor').value),
+          pump_pin: parseInt(row.querySelector('.dev-pump').value),
+          threshold: parseInt(row.querySelector('.dev-thresh').value)
+        });
+      });
+
+      const payload = {
+        config: configData,
+        devices: devicesData
+      };
+
+      try {
+        const response = await fetch('/api/save', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          alert("Settings saved successfully!");
+          window.location.reload();
+        } else {
+          throw new Error("Server returned error");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Error saving data: " + error.message);
+        saveBtn.innerText = "Save Changes";
+        saveBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+
+</html>

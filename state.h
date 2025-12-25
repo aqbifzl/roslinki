@@ -1,33 +1,29 @@
 #ifndef STATE_H
 #define STATE_H
 
+#include <ArduinoJson.h>
+
 #include "config.h"
-#include "sensor.h"
-#include "storage.h"
-#include <cstdint>
+#include "device.h"
 
-enum { OPT_SENSOR1, OPT_SENSOR2, OPT_POWEROFF, OPT_MAX };
+class State {
+private:
+  Device devices[MAX_DEVICES];
+  int deviceCount = 0;
+  int scanInterval = 5000;
+  bool inited = false;
 
-typedef struct {
-  moisture_sensor_t sensors[SENSORS];
-  int selected;
-  bool display_active;
-} state_t;
+public:
+  static State *instance() {
+    static State s;
+    return &s;
+  }
 
-void state_init(storage_t *storage);
-
-const moisture_sensor_t *state_get_sensors();
-void state_set_sensor_adc_value(int sensor, uint16_t value);
-
-int state_get_selected();
-void state_set_selected(int sensor);
-
-void state_handle_short_input(int key);
-void state_handle_long_repeat(int key);
-
-void state_set_pumping_state(int sensor, bool pumping);
-
-void state_set_display_active(bool active);
-bool state_get_display_active();
+  void updateSettings(int newInterval, const JsonArray &newDevices);
+  int getDeviceCount();
+  Device *getDevices();
+  int getScanInterval();
+  bool isInited();
+};
 
 #endif

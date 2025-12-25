@@ -2,3 +2,5 @@ build
 pico-sdk
 !.vscode/*
 .cache
+secrets.h
+backend/roslinki.db

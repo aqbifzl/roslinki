@@ -1,2 +1,0 @@
-default_port: /dev/ttyACM0
-fqbn: rp2040:rp2040:rpipico

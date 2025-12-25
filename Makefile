@@ -1,5 +1,5 @@
 # FQBN for your board
-FQBN ?= rp2040:rp2040:rpipico
+FQBN ?= rp2040:rp2040:rpipico2w
 
 PROJECT = roslinki
 
@@ -15,6 +15,16 @@ BUILD_RELEASE := build/release
 
 # Arduino CLI executable
 ARDUINO_CLI := arduino-cli
+
+ARDUINO_PACKAGES := $(HOME)/.arduino15/packages/rp2040/tools/pqt-openocd
+OPENOCD_ROOT := $(shell ls -d $(ARDUINO_PACKAGES)/* | sort -V | tail -n 1)
+
+OPENOCD_BIN := $(OPENOCD_ROOT)/bin/openocd
+OPENOCD_SCRIPTS := $(OPENOCD_ROOT)/share/openocd/scripts
+
+ifeq ($(OPENOCD_BIN),)
+	$(error Openocd not found)
+endif
 
 # Default build release
 all: release
@@ -39,16 +49,16 @@ release:
 		--verbose
 
 upload-debug: debug
-	openocd \
+	$(OPENOCD_BIN) \
 	  -f interface/cmsis-dap.cfg \
 	  -f target/rp2040.cfg \
 	  -c "adapter speed 5000" \
 	  -c "program $(BUILD_DEBUG)/$(PROJECT).ino.elf verify reset exit"
 
 upload-release: release
-	openocd \
+	$(OPENOCD_BIN) \
 	  -f interface/cmsis-dap.cfg \
-	  -f target/rp2040.cfg \
+	  -f target/rp2350.cfg \
 	  -c "adapter speed 5000" \
 	  -c "program $(BUILD_RELEASE)/$(PROJECT).ino.elf verify reset exit"
 

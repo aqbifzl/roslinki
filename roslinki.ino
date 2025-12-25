@@ -1,43 +1,37 @@
-#include "Wire.h"
 #include "config.h"
-#include "hardware/i2c.h"
-#include "kbd.h"
+#include "mqtt.h"
 #include "state.h"
-#include "storage.h"
-#include "terminal.h"
-#include "watering.h"
-#include <Arduino.h>
-
-unsigned long last_update_ms = 0;
 
 void setup() {
   MSerial.begin(115200);
-  while (!MSerial) {
-  }
-  delay(1000);
 
-  if (!storage_load()) {
-    MSerial.println("restoring data has failed");
-  }
-  state_init(&storage);
-  terminal_init();
-  kbd_init();
-  kbd_set_long_repeat_callback(state_handle_long_repeat);
-  kbd_set_short_press_callback(state_handle_short_input);
-  watering_init();
-
-  MSerial.println("ROSLINKI");
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  Mqtt::instance()->init();
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
-void loop() {
-  kbd_handle_input();
-  unsigned long now = millis();
+uint64_t lastSensorRead = 0;
 
-  if (now - last_update_ms >= SCAN_INTERVAL_MS) {
-    last_update_ms = now;
-    sensor_update_values();
-    watering_handle_state();
+void loop() {
+  if (!Mqtt::instance()->isInited() || !Mqtt::instance()->reconnect())
+    return;
+
+  Mqtt::instance()->readPackets();
+
+  Device *devices = State::instance()->getDevices();
+  const int count = State::instance()->getDeviceCount();
+
+  if (millis() - lastSensorRead > State::instance()->getScanInterval()) {
+    for (int i = 0; i < count; ++i) {
+      devices[i].updateSensorValue();
+    }
+    Mqtt::instance()->sendSensorsValues();
+
+    lastSensorRead = millis();
   }
 
-  terminal_redraw_all();
+  for (int i = 0; i < count; ++i) {
+    devices[i].loop();
+  }
 }
