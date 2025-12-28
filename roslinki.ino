@@ -9,6 +9,11 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
   Mqtt::instance()->init();
   digitalWrite(LED_BUILTIN, LOW);
+
+  analogReadResolution(12);
+  pinMode(26, INPUT);
+  pinMode(27, INPUT);
+  pinMode(28, INPUT);
 }
 
 uint64_t lastSensorRead = 0;
