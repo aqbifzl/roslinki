@@ -37,6 +37,7 @@ This project is designed to be budget-friendly (< $11.00 total)
 ## Installation
 
 ### 1. Secrets Configuration
+
 Create a `secrets.h` file in the root directory of the firmware project. This file handles your WiFi and MQTT credentials.
 
 ```cpp
@@ -51,14 +52,16 @@ Create a `secrets.h` file in the root directory of the firmware project. This fi
 #define SECRET_MQTT_USER "user"
 #define SECRET_MQTT_PASS "password"
 
-#endif```
+#endif
+```
 
 ### 2. Backend
 
 **Build the image:**
 ```bash
 cd backend
-docker build -t roslinki:prod .```
+docker build -t roslinki:prod .
+```
 
 Deploy: You can deploy this on a Raspberry Pi, HomeLab, or VPS.
 
@@ -71,14 +74,16 @@ It is pre-configured for Traefik (auto-subdomain hosting) and includes a Mosquit
 Use the included Makefile to build and upload the firmware.
 Build release:
 ```bash
-make release```
+make release
+```
 
 Upload the generated .uf2 file to the RPi Pico manually.
 
 Upload via Debug Probe:
 
 ```bash
-make upload-release```
+make upload-release
+```
 
 ### 4. Wiring
 
